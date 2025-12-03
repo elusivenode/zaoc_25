@@ -1,13 +1,37 @@
 const std = @import("std");
 const prob0 = @import("problems/prob0.zig");
+const prob1 = @import("problems/prob1.zig");
 
 const Problem = struct {
     id: u8,
     title: []const u8,
+    label: []const u8,
+    default_path: []const u8,
+    run: *const fn (std.mem.Allocator, std.io.AnyWriter, []const []const u8) anyerror!void,
 };
 
+fn mkProblem(comptime ResultType: type, comptime id: u8, title: []const u8, default_path: []const u8, label: []const u8, readInputFn: fn (std.mem.Allocator, []const u8) anyerror![]u8, solveFn: fn (std.mem.Allocator, []const u8) anyerror!ResultType) Problem {
+    return .{
+        .id = id,
+        .title = title,
+        .label = label,
+        .default_path = default_path,
+        .run = struct {
+            fn go(allocator: std.mem.Allocator, writer: std.io.AnyWriter, args: []const []const u8) anyerror!void {
+                const input_path = if (args.len > 0) args[0] else default_path;
+                const data = try readInputFn(allocator, input_path);
+                defer allocator.free(data);
+
+                const answer = try solveFn(allocator, data);
+                try writer.print("{s} ({s}): {any}\n", .{ label, input_path, answer });
+            }
+        }.go,
+    };
+}
+
 const problems = [_]Problem{
-    .{ .id = 0, .title = prob0.title },
+    mkProblem(i64, 0, prob0.title, prob0.full_path, "Problem 0 answer", prob0.readInput, prob0.solve),
+    mkProblem(u32, 1, prob1.title, prob1.full_path, "Problem 1 answer", prob1.readInput, prob1.solve),
 };
 
 pub fn main() !void {
@@ -59,9 +83,16 @@ fn showMenu(allocator: std.mem.Allocator, writer: anytype) !void {
 }
 
 fn dispatchProblem(allocator: std.mem.Allocator, writer: anytype, problem_arg: []const u8, extra_args: []const []const u8) !void {
-    if (std.mem.eql(u8, problem_arg, "0")) {
-        try runProblem0(allocator, writer, extra_args);
+    const id = std.fmt.parseInt(u8, problem_arg, 10) catch {
+        try writer.print("Unknown problem '{s}'. Enter a numeric id.\n", .{problem_arg});
         return;
+    };
+    const any_writer = writer.any();
+    inline for (problems) |p| {
+        if (p.id == id) {
+            try p.run(allocator, any_writer, extra_args);
+            return;
+        }
     }
 
     try writer.print("Unknown problem '{s}'. Available problems: ", .{problem_arg});
@@ -70,14 +101,4 @@ fn dispatchProblem(allocator: std.mem.Allocator, writer: anytype, problem_arg: [
         try writer.print("{d}", .{p.id});
     }
     try writer.writeByte('\n');
-}
-
-fn runProblem0(allocator: std.mem.Allocator, writer: anytype, args: []const []const u8) !void {
-    // If an argument is provided, treat it as a path to input data; otherwise, use the full dataset.
-    const input_path = if (args.len > 0) args[0] else prob0.full_path;
-    const data = try prob0.readInput(allocator, input_path);
-    defer allocator.free(data);
-
-    const answer = try prob0.solve(allocator, data);
-    try writer.print("Problem 0 answer ({s}): {d}\n", .{ input_path, answer });
 }

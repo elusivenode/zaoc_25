@@ -19,12 +19,21 @@ pub fn build(b: *std.Build) void {
     run_step.dependOn(&run_cmd.step);
 
     const test_step = b.step("test", "Run problem libraries tests");
-    const test_cmd = b.addSystemCommand(&[_][]const u8{
+    const test_prob0 = b.addSystemCommand(&[_][]const u8{
         b.graph.zig_exe,
         "test",
         b.pathJoin(&.{ "src", "problems", "prob0.zig" }),
     });
-    test_cmd.setEnvironmentVariable("ZIG_GLOBAL_CACHE_DIR", "zig-cache");
-    test_cmd.setEnvironmentVariable("ZIG_LOCAL_CACHE_DIR", "zig-cache");
-    test_step.dependOn(&test_cmd.step);
+    test_prob0.setEnvironmentVariable("ZIG_GLOBAL_CACHE_DIR", "zig-cache");
+    test_prob0.setEnvironmentVariable("ZIG_LOCAL_CACHE_DIR", "zig-cache");
+    test_step.dependOn(&test_prob0.step);
+
+    const test_prob1 = b.addSystemCommand(&[_][]const u8{
+        b.graph.zig_exe,
+        "test",
+        b.pathJoin(&.{ "src", "problems", "prob1.zig" }),
+    });
+    test_prob1.setEnvironmentVariable("ZIG_GLOBAL_CACHE_DIR", "zig-cache");
+    test_prob1.setEnvironmentVariable("ZIG_LOCAL_CACHE_DIR", "zig-cache");
+    test_step.dependOn(&test_prob1.step);
 }
