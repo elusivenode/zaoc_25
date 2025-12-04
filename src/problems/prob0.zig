@@ -7,7 +7,7 @@ pub const full_path = "data/prob0_full.txt";
 const max_file_size: usize = 10 * 1024 * 1024; // 10 MiB guardrail
 
 /// Sums signed integers separated by whitespace. Empty lines are ignored.
-pub fn solve(allocator: std.mem.Allocator, input: []const u8) !i64 {
+pub fn solvePart1(allocator: std.mem.Allocator, input: []const u8) !i64 {
     _ = allocator; // reserved for future heap usage
 
     var total: i64 = 0;
@@ -26,15 +26,15 @@ test "solve sums sample file values" {
     const data = try readInput(std.testing.allocator, sample_path);
     defer std.testing.allocator.free(data);
 
-    const result = try solve(std.testing.allocator, data);
+    const result = try solvePart1(std.testing.allocator, data);
     try std.testing.expectEqual(@as(i64, 3), result);
 }
 
 test "solve handles empty input" {
-    const result = try solve(std.testing.allocator, "");
+    const result = try solvePart1(std.testing.allocator, "");
     try std.testing.expectEqual(@as(i64, 0), result);
 }
 
 test "solve rejects bad tokens" {
-    try std.testing.expectError(error.InvalidCharacter, solve(std.testing.allocator, "12x"));
+    try std.testing.expectError(error.InvalidCharacter, solvePart1(std.testing.allocator, "12x"));
 }

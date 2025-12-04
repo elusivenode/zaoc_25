@@ -2,19 +2,35 @@ const std = @import("std");
 const prob0 = @import("problems/prob0.zig");
 const prob1 = @import("problems/prob1.zig");
 
+const Part = struct {
+    label: []const u8,
+    run: *const fn (std.mem.Allocator, std.io.AnyWriter, []const u8) anyerror!void,
+};
+
 const Problem = struct {
     id: u8,
     title: []const u8,
-    label: []const u8,
     default_path: []const u8,
     run: *const fn (std.mem.Allocator, std.io.AnyWriter, []const []const u8) anyerror!void,
 };
 
-fn mkProblem(comptime ResultType: type, comptime id: u8, title: []const u8, default_path: []const u8, label: []const u8, readInputFn: fn (std.mem.Allocator, []const u8) anyerror![]u8, solveFn: fn (std.mem.Allocator, []const u8) anyerror!ResultType) Problem {
+fn mkPart(comptime ResultType: type, label: []const u8, solveFn: fn (std.mem.Allocator, []const u8) anyerror!ResultType) Part {
+    return .{
+        .label = label,
+        .run = struct {
+            fn go(allocator: std.mem.Allocator, writer: std.io.AnyWriter, input: []const u8) anyerror!void {
+                const answer = try solveFn(allocator, input);
+                try writer.print("  {s}: {any}\n", .{ label, answer });
+            }
+        }.go,
+    };
+}
+
+fn mkProblem(comptime id: u8, title: []const u8, default_path: []const u8, readInputFn: fn (std.mem.Allocator, []const u8) anyerror![]u8, part1: ?Part, part2: ?Part) Problem {
+    const parts = [_]?Part{ part1, part2 };
     return .{
         .id = id,
         .title = title,
-        .label = label,
         .default_path = default_path,
         .run = struct {
             fn go(allocator: std.mem.Allocator, writer: std.io.AnyWriter, args: []const []const u8) anyerror!void {
@@ -22,16 +38,29 @@ fn mkProblem(comptime ResultType: type, comptime id: u8, title: []const u8, defa
                 const data = try readInputFn(allocator, input_path);
                 defer allocator.free(data);
 
-                const answer = try solveFn(allocator, data);
-                try writer.print("{s} ({s}): {any}\n", .{ label, input_path, answer });
+                try writer.print("{s} [{s}]\n", .{ title, input_path });
+                inline for (parts, 0..) |part, idx| {
+                    if (part) |p| {
+                        try p.run(allocator, writer, data);
+                    } else {
+                        try writer.print("  Part {d}: not implemented\n", .{idx + 1});
+                    }
+                }
             }
         }.go,
     };
 }
 
 const problems = [_]Problem{
-    mkProblem(i64, 0, prob0.title, prob0.full_path, "Problem 0 answer", prob0.readInput, prob0.solve),
-    mkProblem(u32, 1, prob1.title, prob1.full_path, "Problem 1 answer", prob1.readInput, prob1.solve),
+    mkProblem(0, prob0.title, prob0.full_path, prob0.readInput, mkPart(i64, "Part 1", prob0.solvePart1), null),
+    mkProblem(
+        1,
+        prob1.title,
+        prob1.full_path,
+        prob1.readInput,
+        mkPart(i32, "Part 1", prob1.solvePart1),
+        mkPart(i32, "Part 2", prob1.solvePart2),
+    ),
 };
 
 pub fn main() !void {
